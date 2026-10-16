@@ -1634,7 +1634,7 @@ function drawWorldInner(dt){const ox=camX(),oy=camY();
     D.push({y:py+oy,f:()=>{cx.fillStyle=`rgba(255,255,220,${0.35+a*0.5})`;for(let i=0;i<4;i++){const an=animT/400+i*1.57;cx.fillRect(px+Math.cos(an)*10-1,py+Math.sin(an)*6-1,3,3)}}})});
   /* followers walk your trail */
   followers().forEach((p,i)=>{const t=trail[Math.min(trail.length-1,(i+1)*14)]||{x:G.p.x,y:G.p.y};const px=(t.x+0.5)*TP-ox,feet=(t.y+1)*TP-oy-4;D.push({y:feet+oy,f:()=>{shadow(cx,px,feet,9);drawPal(cx,p.k,px,feet-(G.p.moving?Math.abs(Math.sin(animT/110+i))*3:0),palSize(p.k),t.x>G.p.x)}})});
-  {const p=G.p,px=(p.x+0.5)*TP-ox,feet=(p.y+1)*TP-oy-4;D.push({y:feet+oy+0.5,f:()=>{shadow(cx,px,feet,11);const f=p.moving?1+Math.floor(animT/140)%2:0;if(p.dir===1)drawWeapon(cx,p.weapon,px+8,feet-18,2,p.dir);drawChibi(cx,p.look,p.dir,f,px,feet,1);if(p.dir!==1)drawWeapon(cx,p.weapon,px+(p.dir===2?-10:10),feet-16,2,p.dir)}})}
+  {const p=G.p,px=(p.x+0.5)*TP-ox,feet=(p.y+1)*TP-oy-4;D.push({y:feet+oy+0.5,f:()=>{shadow(cx,px,feet,11);const f=p.moving?1+Math.floor(animT/140)%2:0;const hy=feet-29+(f?1:0);if(p.dir===1)drawWeapon(cx,p.weapon,px-14,hy,2,p.dir);drawChibi(cx,p.look,p.dir,f,px,feet,1);if(p.dir!==1)drawWeapon(cx,p.weapon,p.dir===0?px+11:p.dir===2?px-1:px+1,hy,2,p.dir)}})}
   D.sort((a,b)=>a.y-b.y);D.forEach(d=>d.f());
   /* night */const h=(G.time%DAY)/60;const night=h<5?0.55:h<7?0.55*(7-h)/2:h<18?0:h<21?0.55*(h-18)/3:0.55;
   if(G.debugCol){cx.fillStyle='rgba(255,0,0,.28)';for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++)if(solidAt(x,y))cx.fillRect(x*TP-ox,y*TP-oy,TP,TP);cx.fillStyle='rgba(0,120,255,.6)';cx.fillRect((G.p.x+0.2)*TP-ox,(G.p.y+0.55)*TP-oy,0.6*TP,0.35*TP)}
@@ -2707,11 +2707,28 @@ function personaPrompt(v,facts){const tw=townOf(v),L=v.love;const rels=Object.en
    v.secret?`Your secret: ${v.secret.text}. Only reveal it if the facts below say to.`:'',
    facts.share.length?`Things you WILL mention if relevant: ${facts.share.join(' | ')}.`:'',facts.hide.length?`Things you know but will NOT reveal (deflect or say you didn't see anything): ${facts.hide.join(' | ')}.`:'',
    facts.outcome?`Decided outcome (your reply must match it): ${facts.outcome}`:'',
-   `Write like a text message in a chat app: 1 to 3 short sentences, in character, warm or prickly as fits you. Keep it wholesome (PG): this is a cozy game. Never write code, never mention being an AI or a game. End with a new line containing only [[feel:N]] where N is -10..10 for how their message made you feel about them.`].filter(Boolean).join('\n')}
+   `You can hold a real conversation about ANY topic the player brings up (life, feelings, the world, jokes, advice, the news, other villagers, random questions), answering it directly with your own opinions instead of deflecting. Write like a text message in a chat app: 1 to 3 short sentences, in character, warm or prickly as fits you. Keep it wholesome (PG): this is a cozy game. Never write code, never mention being an AI or a game. End with a new line containing only [[feel:N]] where N is -10..10 for how their message made you feel about them.`].filter(Boolean).join('\n')}
 function fallbackReply(v,text,facts){const t=v.temper;const open={kind:'Oh, hi!',cheerful:'Hey hey!',grumpy:'Hmph.',shy:'Oh! Um, hi.',proud:'Well.',curious:'Ooh, hello!',lazy:'Mm, hey.',tidy:'Hello there.',greedy:'What do you want?',generous:'Hello, friend!',dramatic:'At last, you’re here!',calm:'Hello.'}[t]||'Hi.';
   if(facts.outcome)return`${open} ${facts.outcome.replace(/^You /,'I ').replace(/ your /g,' my ').replace(/\(.*?\)/g,'')}`;
   if(facts.share.length)return`${open} ${facts.share[0].replace(/^You /,'I ').replace(/^Your secret: /,'Okay... my secret: ')}.`;if(facts.hide.length)return`${open} I didn’t see anything.`;
-  if(/\?$/.test(text))return`${open} ${pick(Math.random,['Good question. I’d have to think about it.','Hmm, not sure!','Maybe? Ask me again later.'])}`;return`${open} ${pick(Math.random,[`I’m thinking about how to ${v.dream.text}.`,'Busy day. Glad you stopped by.',`Have you been to ${pick(Math.random,world.towns).name} lately?`])}`}
+  const R=Math.random,lo=text.toLowerCase(),tw=townOf(v),N=v.needs;
+  const topics=[
+    [/\b(how are you|how're you|how you doing|you ok|how's it going|hows it going|wyd|what are you doing)\b/,()=>N.food<35?'Honestly? Hungry. I need to grab something to eat soon.':N.energy<30?'Tired. Long day of '+v.job+' work.':N.mood>70?'Really good, actually! Thanks for asking.':'Doing alright. Just getting through the day.'],
+    [/\b(new|news|happening|gossip|around town)\b/,()=>{const n=(G.news||[]).slice(0,6);const it=n.length?pick(R,n):null;return it?`Did you hear? ${String(it.text||it).replace(/<[^>]+>/g,'')}`:`Quiet in ${v.town} lately. Folks are just working and farming.`}],
+    [/\b(help|favor|favour|need something|can you)\b/,()=>hearts(v)>=3?`Sure, what do you need? If it’s ${v.job} stuff, I’m your person.`:'Maybe. Tell me what it is first.'],
+    [/\b(job|work|career)\b/,()=>`I’m a ${v.job}. ${pick(R,['It pays the bills.','Some days I love it, some days not so much.','Keeps me busy, that’s for sure.'])}`],
+    [/\b(dream|goal|want in life|future)\b/,()=>`Someday I want to ${v.dream.text}.`],
+    [/\b(like|love|favorite|favourite|gift)\b/,()=>`I really love ${v.likes}. But please, no ${v.hates}.`],
+    [/\b(hungry|food|eat|lunch|dinner|breakfast)\b/,()=>N.food<40?'Starving, actually.':'I ate not long ago, I’m good.'],
+    [/\b(weather|rain|sun|cold|hot)\b/,()=>pick(R,['Nice day to be outside.','Good day for the crops.','I could go for a cozy night in.'])],
+    [/\b(family|kids|married|single|partner|dating)\b/,()=>v.love&&v.love.stage!=='none'?'You know how I feel about you.':pick(R,['Just me for now.','Still looking for the right person.'])],
+    [/\b(where|live|home|town)\b/,()=>`I live in ${v.town}. ${tw&&tw.name?'It’s home.':''}`],
+    [/\b(thank|thanks|ty)\b/,()=>'Anytime!'],
+    [/\b(bye|later|goodnight|good night|see ya|see you)\b/,()=>'See you around!'],
+    [/\b(hi|hey|hello|yo|sup)\b/,()=>pick(R,['Good to see you.','What’s up?','How’s your day going?'])],
+  ];
+  for(const[re,f]of topics)if(re.test(lo))return`${open} ${f()}`;
+  if(/\?$/.test(text))return`${open} ${pick(R,['Hmm, I’m not sure. What do you think?','That’s a big question. Tell me more?','I don’t really know, honestly.'])}`;return`${open} ${pick(Math.random,[`I’m thinking about how to ${v.dream.text}.`,'Busy day. Glad you stopped by.',`Have you been to ${pick(Math.random,world.towns).name} lately?`])}`}
 async function sendChat(text){const v=chatV;if(!v||chatBusy)return;v.mem.push({me:1,text,t:G.time});renderChatLog();chatBusy=true;const facts=chatFacts(v,text);const day=dayOf(G.time);
   if(v.love.talkDay!==day){v.love.talkDay=day;love(v,15);feel(v,{id:'player'},1,null)}
   const box=$('#clog');box.insertAdjacentHTML('beforeend','<div class="msg them typing">…</div>');box.scrollTop=box.scrollHeight;let reply=null,fv=0;
@@ -2779,12 +2796,20 @@ async function loadSave(){let js=null;try{js=localStorage.getItem(SAVE_KEY)}catc
 const PACKED=()=>window.ARTIPIXEL_ASSETS||null;
 function loadImg(src){const A=PACKED();if(A&&A[src])src=A[src];return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('load '+src));i.src=src})}
 const loadJSON=src=>{const A=PACKED();if(A&&A[src]!=null)return Promise.resolve(A[src]);return fetch(src).then(r=>r.json())};
+/* Web hosting (Vercel etc.): villager AI goes through the site's own /api/chat */
+let webAIWarned=false;
+function webAI(){if(location.protocol==='file:')return;const url=new URL('/api/chat',location.href).href;
+  sampleFn=async(msgs,opts)=>{const body={messages:typeof msgs==='string'?[{role:'user',content:msgs}]:msgs};
+    const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),20000);
+    try{const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl.signal});
+      if(r.status===404||r.status===503){sampleFn=null;if(!webAIWarned){webAIWarned=true;try{toast('Villager AI isn’t switched on for this site yet, so replies are simple.')}catch(e){}}throw{code:'capability_disabled'}}
+      if(!r.ok)throw{code:'http_'+r.status};const j=await r.json();return{text:j.text||''}}finally{clearTimeout(to)}}}
 async function boot(){resize();IMG.tiles=tileset;const st=$('#loadmsg');
   try{const[atlas,houses,shops,vill,civic,cg,cd,ch,fl,gd,pz,ic,cot,cotj,man,vman,sman,sprm,t3,icj]=await Promise.all([loadImg('atlas.png'),loadImg('houses.png'),loadImg('shops.png'),loadImg('villagers.png'),loadImg('civic.png'),
       loadImg('core_grid.webp'),loadImg('core_desert.webp'),loadImg('core_hedge.webp'),loadImg('farmland.webp'),loadImg('garden.webp'),loadImg('plaza.webp'),loadImg('icons.png'),loadImg('cottages.png'),loadJSON('cottages.json'),loadJSON('manifest.json'),loadJSON('vman.json'),loadJSON('sman.json'),loadJSON('sprites.json'),loadJSON('town3.json'),loadJSON('icons.json')]);
     ATLAS=atlas;IMG.houses=houses;IMG.shops=shops;IMG.villagers=vill;IMG.civic=civic;IMG.raw={core_grid:cg,core_desert:cd,core_hedge:ch,farmland:fl,garden:gd,plaza:pz};IMG.icons=ic;IMG.cottages=cot;COTT=cotj;MAN=man;VMAN=vman;SMAN=sman;SPRM=sprm;TOWN3=t3;ICONS=icj}catch(e){st.textContent='Could not load the game files. Try reloading.';return}
   setupSpecies();classifyPals();
-  const cl=window.claude;if(cl&&cl.use){cl.use('sample').then(s=>{sampleFn=s||null}).catch(()=>{});try{const u=await cl.use('user');db=await cl.use('db');if(u&&db){uid=await u.id();if(!uid)db=null}else db=null}catch(e){db=null}}
+  const cl=window.claude;if(!(cl&&cl.use))webAI();if(cl&&cl.use){cl.use('sample').then(s=>{sampleFn=s||null}).catch(()=>{});try{const u=await cl.use('user');db=await cl.use('db');if(u&&db){uid=await u.id();if(!uid)db=null}else db=null}catch(e){db=null}}
   const saved=await loadSave();$('#loading').hidden=true;
   if(saved&&saved.v===1){G=saved;G.zoom=G.zoom||1;G.p.look=avNormalize(G.p.look);G.family.kids.forEach(k=>k.look=avNormalize(k.look));G.villagers.forEach(v=>usedNames.add(v.name));buildWorld(G.builder.regions);applyWorldState();reviveTobi();G.villagers.forEach(v=>{if(v.healthKit==null)v.healthKit=1;ageOf(v);v.lastStage=v.lastStage||stageOf(v)});const sc=secondChance();if(sc&&sc.length){const iv=setInterval(()=>{if(modalOpen())return;clearInterval(iv);say('A second chance',`<p>You brought back <b>${sc.length}</b> villager${sc.length>1?'s':''} who had died: ${sc.map(v=>esc(nameOf(v))).join(', ')}.</p><p>Their tombstones are gone and they’re home again. They know it was a gift: they’ve promised to eat, drink and look after themselves, because next time there may be no coming back.</p>`)},800)}makeHiddenSpots();legendPlaces();repairPlots();
     const away=Math.min(DAY*2,Math.max(0,(Date.now()-(G.lastReal||Date.now()))/1000));const since=G.time;if(away>5)simulate(Math.floor(away));if(G.p.jail)$('#jailbar').hidden=false;startLoop();showRecap(since,away)}
