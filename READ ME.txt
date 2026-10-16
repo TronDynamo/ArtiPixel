@@ -1,0 +1,6 @@
+ArtiPixel
+=========
+Double-click ArtiPixel.html to play. It opens in your web browser and works without internet.
+
+Keep both files (ArtiPixel.html and assets.js) together in this folder.
+Your save lives in this browser on this PC. Account saves and AI chat with villagers only work in the online version.
