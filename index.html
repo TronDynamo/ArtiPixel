@@ -1441,7 +1441,13 @@ $('#vaultGrid').addEventListener('click',e=>{if(e.target.closest('#vMore')){vLim
   if(d){swapDesk(d.dataset.desk);$('#desktop').scrollIntoView({behavior:reduced?'auto':'smooth'})}if(s)openShop(s.dataset.shop)});
 
 /* ---------- owner: unlock every species and every extra (only on the owner's private page, never on the public site) ---------- */
-const OWNER_VIEW=!!(window.claude&&window.claude.use);
+// owner tools show on the private Claude page, or on the website after opening the owner link once (?owner=...) on that browser
+const OWNER_HASH='00fc13d5cb3eef0fb379ae73de102c5f54bbfaeab5307ca7a1831f3994a5dbb0';let OWNER_VIEW=!!(window.claude&&window.claude.use);
+try{if(localStorage.getItem('pp-owner')===OWNER_HASH)OWNER_VIEW=true}catch(e){}
+(async()=>{try{const k=new URLSearchParams(location.search).get('owner');if(!k||!crypto.subtle)return;
+  const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(k));const hex=[...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  if(hex!==OWNER_HASH)return;try{localStorage.setItem('pp-owner',OWNER_HASH)}catch(e){}OWNER_VIEW=true;history.replaceState(null,'',location.pathname+location.hash);
+  const owned=new Set(state.vault.map(c=>c.concept));if(LISTED.some(c=>!owned.has(c.i)))unlockAll();else renderVault()}catch(e){}})();
 function renderOwnerBar(){const el=$('#ownerBar');if(!el)return;if(!OWNER_VIEW){el.hidden=true;return}el.hidden=false;
   const owned=new Set(state.vault.map(c=>c.concept)),missing=LISTED.filter(c=>!owned.has(c.i)).length;
   el.innerHTML=state.owner&&!missing?`<b>Owner mode is on.</b> <span class="muted">All ${LISTED.length} species are in your vault, every finish, bubble and platform is unlocked, and creating pals is free. Open any pal in the Workshop to edit it, or press Download to put it on a PC.</span>`
